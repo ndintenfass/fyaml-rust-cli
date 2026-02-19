@@ -14,10 +14,10 @@ jobs:
           command: cargo clippy --all-targets --all-features -- -D warnings
       - run:
           name: Build release binary
-          command: cargo build --release --locked
+          command: cargo build --release
       - run:
           name: Test
-          command: cargo test --all-targets --all-features --locked
+          command: cargo test --all-targets --all-features
       - persist_to_workspace:
           root: .
           paths:
