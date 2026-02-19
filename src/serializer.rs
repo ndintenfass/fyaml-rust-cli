@@ -23,11 +23,17 @@ pub fn canonicalize_yaml(value: &Value) -> Value {
 fn sort_key_for_yaml(key: &Value) -> Vec<u8> {
     match key {
         Value::String(s) => s.as_bytes().to_vec(),
-        _ => serde_yaml::to_string(key).unwrap_or_else(|_| format!("{key:?}")).into_bytes(),
+        _ => serde_yaml::to_string(key)
+            .unwrap_or_else(|_| format!("{key:?}"))
+            .into_bytes(),
     }
 }
 
-pub fn emit_yaml(value: &Value, include_header: bool, version: &str) -> Result<String, serde_yaml::Error> {
+pub fn emit_yaml(
+    value: &Value,
+    include_header: bool,
+    version: &str,
+) -> Result<String, serde_yaml::Error> {
     let mut out = String::new();
     if include_header {
         out.push_str(&format!("# packed by fyaml v{version}\n"));

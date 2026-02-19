@@ -49,20 +49,28 @@ pub fn build(root: &Path, options: &BuildOptions) -> BuildOutcome {
 
     if !root.exists() {
         ctx.diag(
-            Diagnostic::error("E000", "input directory does not exist", Category::InvalidInput)
-                .with_location(root.display().to_string())
-                .with_cause("The provided path is missing.")
-                .with_action("Pass an existing directory to fyaml commands."),
+            Diagnostic::error(
+                "E000",
+                "input directory does not exist",
+                Category::InvalidInput,
+            )
+            .with_location(root.display().to_string())
+            .with_cause("The provided path is missing.")
+            .with_action("Pass an existing directory to fyaml commands."),
         );
         return ctx.finish(None);
     }
 
     if !root.is_dir() {
         ctx.diag(
-            Diagnostic::error("E000", "input path is not a directory", Category::InvalidInput)
-                .with_location(root.display().to_string())
-                .with_cause("FYAML operations require a directory root.")
-                .with_action("Provide a directory path as the command argument."),
+            Diagnostic::error(
+                "E000",
+                "input path is not a directory",
+                Category::InvalidInput,
+            )
+            .with_location(root.display().to_string())
+            .with_cause("FYAML operations require a directory root.")
+            .with_action("Provide a directory path as the command argument."),
         );
         return ctx.finish(None);
     }
@@ -210,7 +218,9 @@ impl BuildContext {
                     )
                     .with_location(root.display().to_string())
                     .with_cause("No root file was provided.")
-                    .with_action("Pass --root-file <RELATIVE_PATH> when using --root-mode file-root."),
+                    .with_action(
+                        "Pass --root-file <RELATIVE_PATH> when using --root-mode file-root.",
+                    ),
                 );
                 return None;
             }
@@ -321,7 +331,9 @@ impl BuildContext {
                     )
                     .with_location(self.display_path(&root_file_abs))
                     .with_cause("Directory keys cannot be merged into a non-mapping root value.")
-                    .with_action("Use --merge-under with a mapping target or make the root file a mapping."),
+                    .with_action(
+                        "Use --merge-under with a mapping target or make the root file a mapping.",
+                    ),
                 );
             }
         }
@@ -400,7 +412,10 @@ impl BuildContext {
             };
 
             let path = entry.path();
-            if excluded.as_ref().is_some_and(|x| fs::canonicalize(&path).ok().as_ref() == Some(x)) {
+            if excluded
+                .as_ref()
+                .is_some_and(|x| fs::canonicalize(&path).ok().as_ref() == Some(x))
+            {
                 self.add_ignored(&path, "root file excluded from normal scanning");
                 continue;
             }
@@ -528,15 +543,25 @@ impl BuildContext {
             self.add_ignored(&path, "unsupported filesystem entry type");
         }
 
-        contributors.sort_by(|a, b| a.key.as_bytes().cmp(b.key.as_bytes()).then(a.path.cmp(&b.path)));
+        contributors.sort_by(|a, b| {
+            a.key
+                .as_bytes()
+                .cmp(b.key.as_bytes())
+                .then(a.path.cmp(&b.path))
+        });
 
         self.detect_key_collisions(directory, key_path, &contributors);
 
-        let effective_mode = self.resolve_directory_mode(directory, key_path, force_map, &contributors);
+        let effective_mode =
+            self.resolve_directory_mode(directory, key_path, force_map, &contributors);
 
         match effective_mode {
-            DirectoryAssemblyMode::Sequence => self.assemble_sequence(directory, key_path, contributors, excluded_file),
-            DirectoryAssemblyMode::Mapping => self.assemble_mapping(directory, key_path, contributors, excluded_file),
+            DirectoryAssemblyMode::Sequence => {
+                self.assemble_sequence(directory, key_path, contributors, excluded_file)
+            }
+            DirectoryAssemblyMode::Mapping => {
+                self.assemble_mapping(directory, key_path, contributors, excluded_file)
+            }
         }
     }
 
@@ -628,12 +653,16 @@ impl BuildContext {
             match self.options.seq_gaps {
                 SeqGapMode::Error => {
                     self.diag(
-                        Diagnostic::error("E003", "sequence has index gaps", Category::InvalidInput)
-                            .with_location(self.display_path(directory))
-                            .with_derived_key_path(key_path.to_string())
-                            .with_cause("Sequence contributors are not contiguous.")
-                            .with_action("Rename indices to form a contiguous sequence starting at 0.")
-                            .with_context(format!("Missing ranges: {gap_text}")),
+                        Diagnostic::error(
+                            "E003",
+                            "sequence has index gaps",
+                            Category::InvalidInput,
+                        )
+                        .with_location(self.display_path(directory))
+                        .with_derived_key_path(key_path.to_string())
+                        .with_cause("Sequence contributors are not contiguous.")
+                        .with_action("Rename indices to form a contiguous sequence starting at 0.")
+                        .with_context(format!("Missing ranges: {gap_text}")),
                     );
                 }
                 SeqGapMode::Warn => {
@@ -642,7 +671,9 @@ impl BuildContext {
                             .with_location(self.display_path(directory))
                             .with_derived_key_path(key_path.to_string())
                             .with_cause("Sequence contributors are not contiguous.")
-                            .with_action("Rename indices to form a contiguous sequence starting at 0.")
+                            .with_action(
+                                "Rename indices to form a contiguous sequence starting at 0.",
+                            )
                             .with_context(format!("Missing ranges: {gap_text}")),
                     );
                 }
@@ -705,10 +736,14 @@ impl BuildContext {
             Ok(metadata) => metadata,
             Err(err) => {
                 self.diag(
-                    Diagnostic::error("E033", "unable to read file metadata", Category::InvalidInput)
-                        .with_location(self.display_path(path))
-                        .with_cause(err.to_string())
-                        .with_action("Check file permissions and retry."),
+                    Diagnostic::error(
+                        "E033",
+                        "unable to read file metadata",
+                        Category::InvalidInput,
+                    )
+                    .with_location(self.display_path(path))
+                    .with_cause(err.to_string())
+                    .with_action("Check file permissions and retry."),
                 );
                 return None;
             }
@@ -717,14 +752,18 @@ impl BuildContext {
         if let Some(max_bytes) = self.options.max_yaml_bytes {
             if metadata.len() > max_bytes {
                 self.diag(
-                    Diagnostic::error("E034", "YAML fragment exceeds max size", Category::InvalidInput)
-                        .with_location(self.display_path(path))
-                        .with_derived_key_path(key_path.to_string())
-                        .with_cause(format!(
-                            "File size is {} bytes, which exceeds --max-yaml-bytes={max_bytes}.",
-                            metadata.len()
-                        ))
-                        .with_action("Split the fragment or raise --max-yaml-bytes."),
+                    Diagnostic::error(
+                        "E034",
+                        "YAML fragment exceeds max size",
+                        Category::InvalidInput,
+                    )
+                    .with_location(self.display_path(path))
+                    .with_derived_key_path(key_path.to_string())
+                    .with_cause(format!(
+                        "File size is {} bytes, which exceeds --max-yaml-bytes={max_bytes}.",
+                        metadata.len()
+                    ))
+                    .with_action("Split the fragment or raise --max-yaml-bytes."),
                 );
                 return None;
             }
@@ -762,7 +801,9 @@ impl BuildContext {
                     .with_location(self.display_path(path))
                     .with_derived_key_path(key_path.to_string())
                     .with_cause("Canonical mode may lose source style and anchor details.")
-                    .with_action("Use --preserve if supported behavior is acceptable for your workflow."),
+                    .with_action(
+                        "Use --preserve if supported behavior is acceptable for your workflow.",
+                    ),
             );
         }
 
@@ -771,12 +812,13 @@ impl BuildContext {
             match Value::deserialize(document) {
                 Ok(value) => documents.push(value),
                 Err(err) => {
-                    let mut diag = Diagnostic::error("E100", "invalid YAML fragment", Category::Parse)
-                        .with_location(self.display_path(path))
-                        .with_derived_key_path(key_path.to_string())
-                        .with_cause(err.to_string())
-                        .with_action("Fix YAML syntax (indentation, colons, and tabs/spaces).")
-                        .with_context("Run `fyaml validate` for full diagnostics.".to_string());
+                    let mut diag =
+                        Diagnostic::error("E100", "invalid YAML fragment", Category::Parse)
+                            .with_location(self.display_path(path))
+                            .with_derived_key_path(key_path.to_string())
+                            .with_cause(err.to_string())
+                            .with_action("Fix YAML syntax (indentation, colons, and tabs/spaces).")
+                            .with_context("Run `fyaml validate` for full diagnostics.".to_string());
 
                     if let Some(location) = err.location() {
                         diag = diag.with_context(format!(
@@ -807,7 +849,9 @@ impl BuildContext {
                     .with_location(self.display_path(path))
                     .with_derived_key_path(key_path.to_string())
                     .with_cause("YAML input contained multiple documents separated by `---`.")
-                    .with_action("Use --multi-doc=first or --multi-doc=all, or split documents into files."),
+                    .with_action(
+                        "Use --multi-doc=first or --multi-doc=all, or split documents into files.",
+                    ),
                 );
                 None
             }
@@ -828,12 +872,20 @@ impl BuildContext {
         }
     }
 
-    fn detect_key_collisions(&mut self, directory: &Path, key_path: &str, contributors: &[Contributor]) {
+    fn detect_key_collisions(
+        &mut self,
+        directory: &Path,
+        key_path: &str,
+        contributors: &[Contributor],
+    ) {
         let mut exact: HashMap<String, Vec<&Contributor>> = HashMap::new();
         let mut case_folded: HashMap<String, Vec<&Contributor>> = HashMap::new();
 
         for contributor in contributors {
-            exact.entry(contributor.key.clone()).or_default().push(contributor);
+            exact
+                .entry(contributor.key.clone())
+                .or_default()
+                .push(contributor);
             case_folded
                 .entry(contributor.key.to_lowercase())
                 .or_default()
@@ -949,7 +1001,9 @@ fn is_numeric_key(key: &str) -> bool {
 }
 
 fn is_reserved_yaml_key(key: &str) -> bool {
-    RESERVED_YAML_KEYS.iter().any(|reserved| reserved.eq_ignore_ascii_case(key))
+    RESERVED_YAML_KEYS
+        .iter()
+        .any(|reserved| reserved.eq_ignore_ascii_case(key))
 }
 
 fn key_as_string(key: &Value) -> String {

@@ -20,7 +20,11 @@ fn pack_is_deterministic_for_same_tree() {
 
     let output_1 = Command::cargo_bin("fyaml")
         .expect("binary")
-        .args(["pack", dir.path().to_str().expect("utf8 path"), "--no-header"])
+        .args([
+            "pack",
+            dir.path().to_str().expect("utf8 path"),
+            "--no-header",
+        ])
         .assert()
         .success()
         .get_output()
@@ -29,7 +33,11 @@ fn pack_is_deterministic_for_same_tree() {
 
     let output_2 = Command::cargo_bin("fyaml")
         .expect("binary")
-        .args(["pack", dir.path().to_str().expect("utf8 path"), "--no-header"])
+        .args([
+            "pack",
+            dir.path().to_str().expect("utf8 path"),
+            "--no-header",
+        ])
         .assert()
         .success()
         .get_output()
@@ -47,7 +55,11 @@ fn validate_json_reports_collision() {
 
     let output = Command::cargo_bin("fyaml")
         .expect("binary")
-        .args(["validate", dir.path().to_str().expect("utf8 path"), "--json"])
+        .args([
+            "validate",
+            dir.path().to_str().expect("utf8 path"),
+            "--json",
+        ])
         .assert()
         .failure()
         .code(2)
@@ -83,10 +95,16 @@ fn diff_reports_equal_for_semantically_identical_trees() {
     let left = tempdir().expect("left temp dir");
     let right = tempdir().expect("right temp dir");
 
-    write(&left.path().join("env/prod/database.yml"), "host: db\nport: 5432\n");
+    write(
+        &left.path().join("env/prod/database.yml"),
+        "host: db\nport: 5432\n",
+    );
     write(&left.path().join("env/prod/cache.yml"), "ttl: 60\n");
 
-    write(&right.path().join("env.yml"), "prod:\n  cache:\n    ttl: 60\n  database:\n    host: db\n    port: 5432\n");
+    write(
+        &right.path().join("env.yml"),
+        "prod:\n  cache:\n    ttl: 60\n  database:\n    host: db\n    port: 5432\n",
+    );
 
     Command::cargo_bin("fyaml")
         .expect("binary")

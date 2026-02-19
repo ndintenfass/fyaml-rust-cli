@@ -52,9 +52,13 @@ fn run_pack(args: PackArgs) -> ExitCode {
         OutputFormat::Yaml => match emit_yaml(&value, !args.no_header, APP_VERSION) {
             Ok(output) => output,
             Err(err) => {
-                let diag = Diagnostic::error("E300", "unable to serialize YAML output", Category::Internal)
-                    .with_cause(err.to_string())
-                    .with_action("Report this issue; serialization should succeed for parsed input.");
+                let diag = Diagnostic::error(
+                    "E300",
+                    "unable to serialize YAML output",
+                    Category::Internal,
+                )
+                .with_cause(err.to_string())
+                .with_action("Report this issue; serialization should succeed for parsed input.");
                 eprintln!("{}", diag.render_human());
                 return ExitCode::Internal;
             }
@@ -125,13 +129,10 @@ fn run_explain(args: ExplainArgs) -> ExitCode {
         match serde_json::to_string_pretty(&payload) {
             Ok(json) => println!("{json}"),
             Err(err) => {
-                let diag = Diagnostic::error(
-                    "E303",
-                    "unable to render explain JSON",
-                    Category::Internal,
-                )
-                .with_cause(err.to_string())
-                .with_action("Report this issue; JSON serialization should succeed.");
+                let diag =
+                    Diagnostic::error("E303", "unable to render explain JSON", Category::Internal)
+                        .with_cause(err.to_string())
+                        .with_action("Report this issue; JSON serialization should succeed.");
                 eprintln!("{}", diag.render_human());
                 return ExitCode::Internal;
             }
@@ -188,7 +189,11 @@ fn run_diff(args: DiffArgs) -> ExitCode {
                         "first_difference_path": path,
                         "reason": reason
                     });
-                    println!("{}", serde_json::to_string_pretty(&payload).unwrap_or_else(|_| payload.to_string()));
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&payload)
+                            .unwrap_or_else(|_| payload.to_string())
+                    );
                 }
             }
             ExitCode::InvalidInput
@@ -243,9 +248,13 @@ fn print_diagnostics_json(diags: &[Diagnostic]) {
     match serde_json::to_string_pretty(diags) {
         Ok(json) => println!("{json}"),
         Err(err) => {
-            let diag = Diagnostic::error("E304", "unable to render diagnostics JSON", Category::Internal)
-                .with_cause(err.to_string())
-                .with_action("Report this issue; JSON serialization should succeed.");
+            let diag = Diagnostic::error(
+                "E304",
+                "unable to render diagnostics JSON",
+                Category::Internal,
+            )
+            .with_cause(err.to_string())
+            .with_action("Report this issue; JSON serialization should succeed.");
             eprintln!("{}", diag.render_human());
         }
     }
@@ -337,14 +346,20 @@ fn first_map_difference(left: &Mapping, right: &Mapping, path: String) -> Option
     for key in &left_keys {
         if !right.contains_key(*key) {
             let key_text = yaml_key_text(key);
-            return Some((path.clone(), format!("key missing on right side: {key_text}")));
+            return Some((
+                path.clone(),
+                format!("key missing on right side: {key_text}"),
+            ));
         }
     }
 
     for key in &right_keys {
         if !left.contains_key(*key) {
             let key_text = yaml_key_text(key);
-            return Some((path.clone(), format!("key missing on left side: {key_text}")));
+            return Some((
+                path.clone(),
+                format!("key missing on left side: {key_text}"),
+            ));
         }
     }
 
