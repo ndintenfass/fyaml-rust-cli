@@ -1,0 +1,56 @@
+version: 2.1
+
+jobs:
+  build-and-test:
+    docker:
+      - image: cimg/rust:1.75
+    steps:
+      - checkout
+      - run:
+          name: Format check
+          command: cargo fmt --all --check
+      - run:
+          name: Clippy
+          command: cargo clippy --all-targets --all-features -- -D warnings
+      - run:
+          name: Build release binary
+          command: cargo build --release --locked
+      - run:
+          name: Test
+          command: cargo test --all-targets --all-features --locked
+      - persist_to_workspace:
+          root: .
+          paths:
+            - target/release/fyaml
+
+  package-main-artifact:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Package artifact with timestamp and build number
+          command: |
+            set -euo pipefail
+            test -x target/release/fyaml
+            TS="$(date -u +%Y%m%dT%H%M%SZ)"
+            ARTIFACT="fyaml-${TS}-build-${CIRCLE_BUILD_NUM}.tar.gz"
+            mkdir -p artifacts
+            tar -C target/release -czf "artifacts/${ARTIFACT}" fyaml
+            echo "Created artifacts/${ARTIFACT}"
+      - store_artifacts:
+          path: artifacts
+          destination: release
+
+workflows:
+  ci:
+    jobs:
+      - build-and-test
+      - package-main-artifact:
+          requires:
+            - build-and-test
+          filters:
+            branches:
+              only:
+                - main
