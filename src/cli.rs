@@ -39,7 +39,7 @@ pub struct PackArgs {
     pub output: Option<PathBuf>,
 
     /// Output format
-    #[arg(long, default_value_t = OutputFormat::Yaml)]
+    #[arg(long, default_value = "yaml")]
     pub format: OutputFormat,
 
     /// Suppress the default version header comment
@@ -85,7 +85,7 @@ pub struct DiffArgs {
     pub dir_b: PathBuf,
 
     /// Diff output format
-    #[arg(long, default_value_t = DiffFormat::Path)]
+    #[arg(long, default_value = "path")]
     pub format: DiffFormat,
 
     #[command(flatten)]
@@ -101,11 +101,11 @@ pub struct ScaffoldArgs {
     pub dir: PathBuf,
 
     /// Layout strategy (deterministic helper, not invertible)
-    #[arg(long, default_value_t = ScaffoldLayout::Hybrid)]
+    #[arg(long, default_value = "hybrid")]
     pub layout: ScaffoldLayout,
 
     /// Sequence representation in generated layout
-    #[arg(long, default_value_t = SequenceLayout::Files)]
+    #[arg(long, default_value = "files")]
     pub seq: SequenceLayout,
 
     /// Optional split threshold for large scalar fragments
@@ -126,7 +126,7 @@ impl ScaffoldArgs {
 #[derive(Debug, Clone, Args)]
 pub struct BuildFlags {
     /// Root construction mode
-    #[arg(long, default_value_t = RootMode::MapRoot)]
+    #[arg(long, default_value = "map-root")]
     pub root_mode: RootMode,
 
     /// Root file path (required with --root-mode file-root)
@@ -142,11 +142,11 @@ pub struct BuildFlags {
     pub include_hidden: bool,
 
     /// Sequence gap handling
-    #[arg(long, default_value_t = SeqGapMode::Warn)]
+    #[arg(long, default_value = "warn")]
     pub seq_gaps: SeqGapMode,
 
     /// Multi-document YAML handling
-    #[arg(long, default_value_t = MultiDocMode::Error)]
+    #[arg(long, default_value = "error")]
     pub multi_doc: MultiDocMode,
 
     /// Suppress warnings for dotted keys derived from filenames

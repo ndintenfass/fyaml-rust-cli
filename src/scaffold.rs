@@ -42,6 +42,8 @@ pub struct ScaffoldOutcome {
     pub diagnostics: Vec<Diagnostic>,
 }
 
+type ScaffoldResult<T> = Result<T, Box<Diagnostic>>;
+
 pub fn scaffold(
     input_file: &Path,
     output_dir: &Path,
@@ -113,7 +115,7 @@ pub fn scaffold(
     }
 
     if let Err(diagnostic) = write_value(None, &value, output_dir, options) {
-        diagnostics.push(diagnostic);
+        diagnostics.push(*diagnostic);
     }
 
     diagnostics.push(
@@ -134,7 +136,7 @@ fn write_value(
     value: &Value,
     directory: &Path,
     options: &ScaffoldOptions,
-) -> Result<(), Diagnostic> {
+) -> ScaffoldResult<()> {
     match value {
         Value::Mapping(map) => write_mapping(key, map, directory, options),
         Value::Sequence(sequence) => write_sequence(key, sequence, directory, options),
@@ -147,19 +149,21 @@ fn write_mapping(
     map: &serde_yaml::Mapping,
     directory: &Path,
     options: &ScaffoldOptions,
-) -> Result<(), Diagnostic> {
+) -> ScaffoldResult<()> {
     let target_directory = if let Some(key) = key {
         let key = normalize_path_key(key)?;
         let next = directory.join(key);
         fs::create_dir_all(&next).map_err(|err| {
-            Diagnostic::error(
-                "E204",
-                "unable to create mapping directory",
-                Category::Write,
+            Box::new(
+                Diagnostic::error(
+                    "E204",
+                    "unable to create mapping directory",
+                    Category::Write,
+                )
+                .with_location(next.display().to_string())
+                .with_cause(err.to_string())
+                .with_action("Check write permissions and path validity."),
             )
-            .with_location(next.display().to_string())
-            .with_cause(err.to_string())
-            .with_action("Check write permissions and path validity.")
         })?;
         next
     } else {
@@ -170,17 +174,19 @@ fn write_mapping(
         .iter()
         .map(|(key, value)| {
             let key = key.as_str().ok_or_else(|| {
-                Diagnostic::error(
-                    "E205",
-                    "non-string YAML mapping keys are unsupported for scaffold",
-                    Category::InvalidInput,
+                Box::new(
+                    Diagnostic::error(
+                        "E205",
+                        "non-string YAML mapping keys are unsupported for scaffold",
+                        Category::InvalidInput,
+                    )
+                    .with_cause("Filesystem entries require string-like path names.")
+                    .with_action("Convert mapping keys to strings before running scaffold."),
                 )
-                .with_cause("Filesystem entries require string-like path names.")
-                .with_action("Convert mapping keys to strings before running scaffold.")
             })?;
             Ok((key.to_string(), value))
         })
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<ScaffoldResult<Vec<_>>>()?;
 
     entries.sort_by(|a, b| a.0.as_bytes().cmp(b.0.as_bytes()));
 
@@ -224,19 +230,21 @@ fn write_sequence(
     sequence: &[Value],
     directory: &Path,
     options: &ScaffoldOptions,
-) -> Result<(), Diagnostic> {
+) -> ScaffoldResult<()> {
     let base_directory = if let Some(key) = key {
         let key = normalize_path_key(key)?;
         let next = directory.join(key);
         fs::create_dir_all(&next).map_err(|err| {
-            Diagnostic::error(
-                "E206",
-                "unable to create sequence directory",
-                Category::Write,
+            Box::new(
+                Diagnostic::error(
+                    "E206",
+                    "unable to create sequence directory",
+                    Category::Write,
+                )
+                .with_location(next.display().to_string())
+                .with_cause(err.to_string())
+                .with_action("Check write permissions and path validity."),
             )
-            .with_location(next.display().to_string())
-            .with_cause(err.to_string())
-            .with_action("Check write permissions and path validity.")
         })?;
         next
     } else {
@@ -250,14 +258,16 @@ fn write_sequence(
             SequenceLayout::Dir => {
                 let item_dir = base_directory.join(&key);
                 fs::create_dir_all(&item_dir).map_err(|err| {
-                    Diagnostic::error(
-                        "E207",
-                        "unable to create sequence item directory",
-                        Category::Write,
+                    Box::new(
+                        Diagnostic::error(
+                            "E207",
+                            "unable to create sequence item directory",
+                            Category::Write,
+                        )
+                        .with_location(item_dir.display().to_string())
+                        .with_cause(err.to_string())
+                        .with_action("Check write permissions and path validity."),
                     )
-                    .with_location(item_dir.display().to_string())
-                    .with_cause(err.to_string())
-                    .with_action("Check write permissions and path validity.")
                 })?;
 
                 match item {
@@ -277,74 +287,86 @@ fn write_scalar_file(
     value: &Value,
     directory: &Path,
     options: &ScaffoldOptions,
-) -> Result<(), Diagnostic> {
+) -> ScaffoldResult<()> {
     let key = normalize_path_key(key)?;
     let output_path = directory.join(format!("{key}.yml"));
 
     let yaml = serde_yaml::to_string(value).map_err(|err| {
-        Diagnostic::error(
-            "E208",
-            "unable to serialize YAML fragment",
-            Category::Internal,
+        Box::new(
+            Diagnostic::error(
+                "E208",
+                "unable to serialize YAML fragment",
+                Category::Internal,
+            )
+            .with_location(output_path.display().to_string())
+            .with_cause(err.to_string())
+            .with_action("Report this issue; YAML serialization should succeed for parsed input."),
         )
-        .with_location(output_path.display().to_string())
-        .with_cause(err.to_string())
-        .with_action("Report this issue; YAML serialization should succeed for parsed input.")
     })?;
 
     if let Some(threshold) = options.split_threshold_bytes {
         if yaml.len() > threshold && matches!(value, Value::String(_)) {
             let nested_path = directory.join(&key);
             fs::create_dir_all(&nested_path).map_err(|err| {
-                Diagnostic::error("E209", "unable to create split directory", Category::Write)
-                    .with_location(nested_path.display().to_string())
-                    .with_cause(err.to_string())
-                    .with_action("Check write permissions and path validity.")
+                Box::new(
+                    Diagnostic::error("E209", "unable to create split directory", Category::Write)
+                        .with_location(nested_path.display().to_string())
+                        .with_cause(err.to_string())
+                        .with_action("Check write permissions and path validity."),
+                )
             })?;
             let fallback = nested_path.join("value.yml");
             fs::write(&fallback, yaml).map_err(|err| {
-                Diagnostic::error(
-                    "E210",
-                    "unable to write split YAML fragment",
-                    Category::Write,
+                Box::new(
+                    Diagnostic::error(
+                        "E210",
+                        "unable to write split YAML fragment",
+                        Category::Write,
+                    )
+                    .with_location(fallback.display().to_string())
+                    .with_cause(err.to_string())
+                    .with_action("Check write permissions and available disk space."),
                 )
-                .with_location(fallback.display().to_string())
-                .with_cause(err.to_string())
-                .with_action("Check write permissions and available disk space.")
             })?;
             return Ok(());
         }
     }
 
     fs::write(&output_path, yaml).map_err(|err| {
-        Diagnostic::error("E211", "unable to write YAML fragment", Category::Write)
-            .with_location(output_path.display().to_string())
-            .with_cause(err.to_string())
-            .with_action("Check write permissions and available disk space.")
+        Box::new(
+            Diagnostic::error("E211", "unable to write YAML fragment", Category::Write)
+                .with_location(output_path.display().to_string())
+                .with_cause(err.to_string())
+                .with_action("Check write permissions and available disk space."),
+        )
     })?;
 
     Ok(())
 }
 
-fn normalize_path_key(key: &str) -> Result<String, Diagnostic> {
+fn normalize_path_key(key: &str) -> ScaffoldResult<String> {
     if key.contains('/') || key.contains('\\') {
-        return Err(Diagnostic::error(
-            "E212",
-            "mapping key contains path separators and cannot be scaffolded",
-            Category::InvalidInput,
-        )
-        .with_cause("The scaffold layout maps keys to filesystem paths.")
-        .with_action("Rename keys to avoid `/` or `\\`, or scaffold manually."));
+        return Err(Box::new(
+            Diagnostic::error(
+                "E212",
+                "mapping key contains path separators and cannot be scaffolded",
+                Category::InvalidInput,
+            )
+            .with_cause("The scaffold layout maps keys to filesystem paths.")
+            .with_action("Rename keys to avoid `/` or `\\`, or scaffold manually."),
+        ));
     }
 
     if key.is_empty() {
-        return Err(Diagnostic::error(
-            "E213",
-            "empty mapping key cannot be scaffolded",
-            Category::InvalidInput,
-        )
-        .with_cause("Filesystem entries require non-empty names.")
-        .with_action("Ensure all mapping keys are non-empty strings."));
+        return Err(Box::new(
+            Diagnostic::error(
+                "E213",
+                "empty mapping key cannot be scaffolded",
+                Category::InvalidInput,
+            )
+            .with_cause("Filesystem entries require non-empty names.")
+            .with_action("Ensure all mapping keys are non-empty strings."),
+        ));
     }
 
     Ok(key.to_string())

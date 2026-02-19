@@ -1,4 +1,4 @@
-use assert_cmd::Command;
+use assert_cmd::cargo::cargo_bin_cmd;
 use predicates::prelude::*;
 use serde_json::Value;
 use std::fs;
@@ -18,8 +18,7 @@ fn pack_is_deterministic_for_same_tree() {
     write(&dir.path().join("b.yml"), "z: 2\na: 1\n");
     write(&dir.path().join("a.yml"), "v: 3\n");
 
-    let output_1 = Command::cargo_bin("fyaml")
-        .expect("binary")
+    let output_1 = cargo_bin_cmd!("fyaml")
         .args([
             "pack",
             dir.path().to_str().expect("utf8 path"),
@@ -31,8 +30,7 @@ fn pack_is_deterministic_for_same_tree() {
         .stdout
         .clone();
 
-    let output_2 = Command::cargo_bin("fyaml")
-        .expect("binary")
+    let output_2 = cargo_bin_cmd!("fyaml")
         .args([
             "pack",
             dir.path().to_str().expect("utf8 path"),
@@ -53,8 +51,7 @@ fn validate_json_reports_collision() {
     write(&dir.path().join("auth.yml"), "kind: file\n");
     write(&dir.path().join("auth/provider.yml"), "kind: dir\n");
 
-    let output = Command::cargo_bin("fyaml")
-        .expect("binary")
+    let output = cargo_bin_cmd!("fyaml")
         .args([
             "validate",
             dir.path().to_str().expect("utf8 path"),
@@ -81,8 +78,7 @@ fn explain_lists_ignored_entries() {
     write(&dir.path().join("a.yml"), "x: 1\n");
     write(&dir.path().join("notes.txt"), "ignore me\n");
 
-    Command::cargo_bin("fyaml")
-        .expect("binary")
+    cargo_bin_cmd!("fyaml")
         .args(["explain", dir.path().to_str().expect("utf8 path")])
         .assert()
         .success()
@@ -106,8 +102,7 @@ fn diff_reports_equal_for_semantically_identical_trees() {
         "prod:\n  cache:\n    ttl: 60\n  database:\n    host: db\n    port: 5432\n",
     );
 
-    Command::cargo_bin("fyaml")
-        .expect("binary")
+    cargo_bin_cmd!("fyaml")
         .args([
             "diff",
             left.path().to_str().expect("utf8 path"),
@@ -123,8 +118,7 @@ fn reserved_word_filename_fails_by_default() {
     let dir = tempdir().expect("temp dir");
     write(&dir.path().join("true.yml"), "x: 1\n");
 
-    Command::cargo_bin("fyaml")
-        .expect("binary")
+    cargo_bin_cmd!("fyaml")
         .args(["validate", dir.path().to_str().expect("utf8 path")])
         .assert()
         .failure()
@@ -137,8 +131,7 @@ fn reserved_word_filename_allowed_with_flag() {
     let dir = tempdir().expect("temp dir");
     write(&dir.path().join("true.yml"), "x: 1\n");
 
-    Command::cargo_bin("fyaml")
-        .expect("binary")
+    cargo_bin_cmd!("fyaml")
         .args([
             "validate",
             dir.path().to_str().expect("utf8 path"),
@@ -160,8 +153,7 @@ fn scaffold_then_pack_keeps_semantics() {
         "name: app\nsteps:\n  - extract\n  - transform\n  - load\n",
     );
 
-    Command::cargo_bin("fyaml")
-        .expect("binary")
+    cargo_bin_cmd!("fyaml")
         .args([
             "scaffold",
             input.to_str().expect("utf8 path"),
@@ -170,8 +162,7 @@ fn scaffold_then_pack_keeps_semantics() {
         .assert()
         .success();
 
-    let packed_scaffold = Command::cargo_bin("fyaml")
-        .expect("binary")
+    let packed_scaffold = cargo_bin_cmd!("fyaml")
         .args([
             "pack",
             scaffold_dir.to_str().expect("utf8 path"),
@@ -183,8 +174,7 @@ fn scaffold_then_pack_keeps_semantics() {
         .stdout
         .clone();
 
-    let packed_input = Command::cargo_bin("fyaml")
-        .expect("binary")
+    let packed_input = cargo_bin_cmd!("fyaml")
         .args([
             "pack",
             input_root.path().to_str().expect("utf8 path"),
